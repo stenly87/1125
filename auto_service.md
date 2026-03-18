@@ -37,7 +37,31 @@
     *   Скидка (5% от 5000р, 10% от 10000р).
     *   Итого к оплате.
 *   **Сохранение (Важно!):**
-    *   При нажатии "Подтвердить" выполняется (по-хорошему в виде **транзакции**):
+    *   При нажатии "Подтвердить" выполняется (в виде **транзакции**):
         1.  `INSERT INTO orders ...` (создается запись заказа, получаем его `NEW ID`).
         2.  Циклом `INSERT INTO order_items (order_id, work_id, price) ...` (сохраняются все отмеченные работы с привязкой к новому ID заказа).
 *   **Кнопка:** "Новый заказ" (сброс к Окну 1).
+
+### Пример запросов в транзакции
+```csharp
+// создание транзакции
+using var transaction = connection.BeginTransaction();
+try
+{
+   // какие-то запросы, которые должны быть выполненны в рамках одной транзакции
+   using (var mc = new MySqlCommand(sql1, connection, transaction))
+       mc.ExecuteNonQuery();
+   using (var mc = new MySqlCommand(sql2, connection, transaction))
+       mc.ExecuteNonQuery();
+   for (int i = 0; i < 10; i++)
+       using (var mc = new MySqlCommand(sql3 + i, connection, transaction))
+           mc.ExecuteNonQuery();
+   // подтверждение транзации
+   transaction.Commit();
+}
+catch (Exception e)
+{
+   // отмена всех запросов в данной транзакции в случае ошибки
+   transaction.Rollback();
+}
+```
